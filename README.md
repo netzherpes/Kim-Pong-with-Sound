@@ -1,5 +1,5 @@
 # Kim-Pong-with-Sound
-The Game Pong from the first Book of KIM with sound <br>
+The Game PingPong from the first Book of KIM with sound <br>
 **not tested yet**<br>
 A sound hack for the Game PingPong from the <br>
 "First Book of KIM"<br>

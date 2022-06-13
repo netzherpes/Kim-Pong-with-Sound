@@ -1,0 +1,297 @@
+ca65 V2.19 - Git 4f87c7c
+Main file   : .\Pong_with_sound_test.S
+Current file: .\Pong_with_sound_test.S
+
+000000r 1               ;***************************************
+000000r 1               ;* Pong by                             *
+000000r 1               ;* J. Butterfield 1979                 *
+000000r 1               ;* Sound                               *
+000000r 1               ;* George W. Hawkins 1980              *
+000000r 1               ;***************************************
+000000r 1               
+000000r 1               MEMY     =       $8d
+000000r 1               CNT      =       $8e
+000000r 1               PNT      =       $8f
+000000r 1               		SPEED   = $80           ; speed ball travels
+000000r 1                       SPOT    = $81           ; segment(s)  ball lights
+000000r 1                       LOG     = $82           ; record of recent plays
+000000r 1                       PAUSE   = $83           ; delay before ball moves
+000000r 1                       DIRECT  = $84           ; direction of ball
+000000r 1                       PLACE   = $85           ; position of ball
+000000r 1                       SCORE   = $86
+000000r 1                       PLEFT   = $87           ; 0 for KIM to play left
+000000r 1                       PRITE   = $88           ; 0 for KIM to play right
+000000r 1                       DIGIT   = $89
+000000r 1                       ARG     = $8A
+000000r 1                       MOD     = $8B
+000000r 1                       TEMP    = $8C
+000000r 1               
+000000r 1                       TIMER   = $1704
+000000r 1                       SAD     = $1740
+000000r 1                       PADD    = $1741
+000000r 1                       SBD     = $1742
+000000r 1                       KEYIN   = $1F40
+000000r 1                       GETKEY  = $1F6A
+000000r 1                       TABLE   = $1FE7
+000000r 1               
+000000r 1                       .ORG    $0200
+000200  1               
+000200  1  20 40 1F     START:  JSR     KEYIN           ; directional registers
+000203  1  20 6A 1F             JSR     GETKEY          ; input key
+000206  1  C9 13                CMP     #$13            ; GO key?
+000208  1  D0 0A                BNE     NOGO            ; nope, skip
+00020A  1               ; GO key -      set up game here
+00020A  1  A2 08                LDX     #8              ; get 9 ..
+00020C  1  BD 24 03     SETUP:  LDA     INIT,X          ;       ..inital valus
+00020F  1  95 80                STA     SPEED,X         ;       to zero page
+000211  1  CA                   DEX
+000212  1  10 F8                BPL     SETUP
+000214  1               ; test   legal keys (0,3,4,7,8,n,C,F)
+000214  1  C9 10        NOGO:   CMP     #$10            ; key 0 to F?
+000216  1  B0 22                BCS     NOKEY           ; no, skip
+000218  1  AA                   TAX                     ; save key in X
+000219  1  29 03                AND     #3              ; test column
+00021B  1  F0 04                BEQ     KEY             ; col 0 (0,4,8,C)?
+00021D  1  C9 03                CMP     #3              ; col 3 (3,7,B,F)?
+00021F  1  D0 19                BNE     NOKEY           ; neither - skip
+000221  1  45 85        KEY:    EOR     PLACE           ; check vs ball postn
+000223  1  A8                   TAY
+000224  1  29 04                AND     #4              ; ball off screen?
+000226  1  D0 12                BNE     NOKEY
+000228  1  8A                   TXA                     ; restore key
+000229  1  45 84                EOR     DIRECT          ; ball going away?
+00022B  1  29 02                AND     #2
+00022D  1  F0 0B                BEQ     NOKEY           ; yes, ignore key
+00022F  1  98                   TYA                     ; ball position
+000230  1  29 02                AND     #2              ; wrong side of net?
+000232  1  D0 69                BNE     POINT           ; yes, lose!
+000234  1               ; legal play found here
+000234  1  8A                   TXA                     ; restore key
+000235  1  4A                   LSR     A               ; type (0=Spin, etc)
+000236  1  4A                   LSR     A
+000237  1  20 B1 02             JSR     SHOT            ; make shot
+00023A  1               ; key rtns   complete - play ball
+00023A  1  20 40 1F     NOKEY:  JSR     KEYIN           ; if key still prest..
+00023D  1  D0 27                BNE     FREEZE          ; freeze ball
+00023F  1  C6 83                DEC     PAUSE
+000241  1  10 23                BPL     FREEZE          ; wait til timeout
+000243  1  A5 80                LDA     SPEED
+000245  1  85 83                STA     PAUSE
+000247  1  18                   CLC
+000248  1  A5 85                LDA     PLACE           ; move..
+00024A  1  65 84                ADC     DIRECT          ; ..ball
+00024C  1  85 85                STA     PLACE
+00024E  1  29 04                AND     #4              ; ball still..
+000250  1  F0 14                BEQ     FREEZE          ; in court?
+000252  1               ; ball   outside - KIM to play?
+000252  1  A5 85                LDA     PLACE
+000254  1  30 04                BMI     TESTL           ; ball on left
+000256  1  A5 88                LDA     PRITE           ; KIM plays right?
+000258  1  10 02                BPL     SKPT            ; unconditional
+00025A  1  A5 87        TESTL:  LDA     PLEFT           ; KIM plays left?
+00025C  1  D0 3F        SKPT:   BNE     POINT           ; no, lose point
+00025E  1               ; KIM   plays either side here
+00025E  1  A6 82                LDX     LOG             ; log determines..
+000260  1  BD 39 03             LDA     PLAY,X          ; KIMs play
+000263  1  20 B1 02             JSR     SHOT            ; make the shot
+000266  1  A9 7F        FREEZE: LDA     #$7F
+000268  1  8D 41 17             STA     PADD            ; open registers
+00026B  1               ; light display here
+00026B  1  A0 13                LDY     #$13
+00026D  1  A2 01                LDX     #1
+00026F  1  86 89                STX     DIGIT           ; count score digts
+000271  1  A5 86                LDA     SCORE
+000273  1  4A                   LSR     A               ; shift & store..
+000274  1  4A                   LSR     A
+000275  1  4A                   LSR     A
+000276  1  4A                   LSR     A               ; ..left player score
+000277  1  85 8A                STA     ARG
+000279  1  A5 86                LDA     SCORE
+00027B  1  29 0F                AND     #$0F            ; ..right player score
+00027D  1  AA                   TAX
+00027E  1  BD E7 1F     HOOP:   LDA     TABLE,X
+000281  1  20 A4 02             JSR     SHOW
+000284  1  A6 8A                LDX     ARG             ; error in printed listing?
+000286  1  C6 89                DEC     DIGIT
+000288  1  10 F4                BPL     HOOP
+00028A  1  A2 03                LDX     #3
+00028C  1  BD 2D 03     VUE:    LDA     PIX,X
+00028F  1  E4 85                CPX     PLACE
+000291  1  D0 02                BNE     NOPIX
+000293  1  05 81                ORA     SPOT            ; show the ball
+000295  1  20 A4 02     NOPIX:  JSR     SHOW
+000298  1  CA                   DEX
+000299  1  10 F1                BPL     VUE
+00029B  1  30 03                BMI     SLINK
+00029D  1               ; lose! score & reverse board
+00029D  1  20 E9 02     POINT:  JSR     SKORE
+0002A0  1  D8           SLINK:  CLD
+0002A1  1  4C 00 02             JMP     START           ; return to main loop
+0002A4  1               ; display subroutine
+0002A4  1  8D 40 17     SHOW:   STA     SAD
+0002A7  1  8C 42 17             STY     SBD
+0002AA  1  C6 8B        STALL:  DEC     MOD
+0002AC  1  D0 FC                BNE     STALL
+0002AE  1  88                   DEY
+0002AF  1  88                   DEY
+0002B0  1  60                   RTS
+0002B1  1  A8           SHOT:   TAY                     ; save shot in Y
+0002B2  1  A6 82                LDX     LOG             ; old log in X
+0002B4  1  06 82                ASL     LOG
+0002B6  1  06 82                ASL     LOG
+0002B8  1  05 82                ORA     LOG
+0002BA  1  29 0F                AND     #$F             ; update log book
+0002BC  1  85 82                STA     LOG             ; ..last two shots
+0002BE  1  38                   SEC
+0002BF  1  A5 80                LDA     SPEED
+0002C1  1  E5 83                SBC     PAUSE           ; invert timing
+0002C3  1  85 83                STA     PAUSE
+0002C5  1               ; set speed & display segment(s)
+0002C5  1  B9 31 03             LDA     SPD,Y
+0002C8  1  85 80                STA     SPEED
+0002CA  1  B9 35 03             LDA     SEG,Y
+0002CD  1  85 81                STA     SPOT
+0002CF  1               ; test play success - random
+0002CF  1  BD 49 03             LDA     CHANCE,X        ; odds from log bk
+0002D2  1  88           GIT:    DEY
+0002D3  1  30 04                BMI     GET
+0002D5  1  4A                   LSR     A
+0002D6  1  4A                   LSR     A
+0002D7  1  10 F9                BPL     GIT             ; unconditional
+0002D9  1  29 03        GET:    AND     #3              ; odds 0 to 3..
+0002DB  1  0A                   ASL     A               ; now 0 to 6
+0002DC  1  85 8C                STA    TEMP
+0002DE  1  AD 04 17             LDA    TIMER            ; random number
+0002E1  1  29 07                AND    #7               ; now 0 to 7
+0002E3  1  C5 8C                CMP    TEMP
+0002E5  1  F0 33                BEQ    REVRS            ; success?
+0002E7  1  90 31                BCC    REVRS            ; success?
+0002E9  1               ; lose a point & position to serve
+0002E9  1  20 59 03     SKORE:  jsr     MBEP
+0002EC  1  EA                   nop
+0002ED  1  0A                   ASL    A
+0002EE  1  0A                   ASL    A
+0002EF  1  0A                   ASL    A
+0002F0  1  0A                   ASL    A
+0002F1  1  10 04                BPL    OVER
+0002F3  1  A2 FF                LDX    #$FF             ; position ball L
+0002F5  1  A9 01                LDA    #1
+0002F7  1  86 85        OVER:   STX    PLACE
+0002F9  1  18                   CLC
+0002FA  1  65 86                ADC    SCORE
+0002FC  1  85 86                STA    SCORE
+0002FE  1  A0 00                LDY    #0               ; end game, kill ball
+000300  1  AA           TLP:    TAX
+000301  1  29 0F                AND    #$F               ; get one score
+000303  1  C9 0B                CMP    #11               ; 11 points?
+000305  1  D0 02                BNE    SKI
+000307  1  84 84                STY    DIRECT            ; kill ball
+000309  1  8A           SKI:    TXA
+00030A  1  4A                   LSR    A
+00030B  1  4A                   LSR    A
+00030C  1  4A                   LSR    A
+00030D  1  4A                   LSR    A
+00030E  1  D0 F0                BNE    TLP
+000310  1               ; set serve - speed, spot, log, pause
+000310  1  A2 03                LDX    #3
+000312  1  BD 24 03     SRV:    LDA    INIT,X
+000315  1  95 80                STA    SPEED,X
+000317  1  CA                   DEX
+000318  1  10 F8                BPL    SRV
+00031A  1               ; reverse ball direction
+00031A  1  20 73 03     REVRS:  jsr     HBEP
+00031D  1  49 FF                EOR    #$FF
+00031F  1  69 01                ADC    #1
+000321  1  85 84                STA    DIRECT
+000323  1  60                   RTS
+000324  1               
+000324  1               ; tables - in Hexadecimal format
+000324  1               
+000324  1  30 08 00 80  INIT:   .BYTE  $30, $08, $00, $80, $01, $FF, $00, $01, $00
+000328  1  01 FF 00 01  
+00032C  1  00           
+00032D  1  00 06 30 00  PIX:    .BYTE  $00, $06, $30, $00
+000331  1  20 20 20 14  SPD:    .BYTE  $20, $20, $20, $14
+000335  1  08 40 01 49  SEG:    .BYTE  $08, $40, $01, $49
+000339  1  02 02 01 02  PLAY:   .BYTE  $02, $02, $01, $02, $01, $03, $01, $02, $03, $03, $00, $02, $00, $00, $02, $02
+00033D  1  01 03 01 02  
+000341  1  03 03 00 02  
+000345  1  00 00 02 02
+000349  1  78 B5 9E 76  CHANCE: .BYTE  $78, $B5, $9E, $76, $6E, $A1, $AE, $75, $AA, $EB, $8F, $75, $5B, $56, $7A, $35
+00034D  1  6E A1 AE 75  
+000351  1  AA EB 8F 75  
+000355  1  5B 56 7A 35             
+000359  1               
+000359  1  A5 84        MBEP:    lda     $84
+00035B  1  F0 13                 beq     RTN
+00035D  1  08                    php
+00035E  1  A9 02                 lda     #$02
+000360  1  85 8D                 sta     MEMY
+000362  1  A9 80                 lda     #$80
+000364  1  85 8E                 sta     CNT
+000366  1  20 BA 03              jsr     ENTN
+000369  1  A9 FF                 lda     #$ff
+00036B  1  85 8F                 sta     PNT
+00036D  1  A5 84                 lda     $84
+00036F  1  28                    plp
+000370  1  A2 04        RTN:     ldx     #$04
+000372  1  60                    rts
+000373  1               
+000373  1  E6 8F        HBEP:    inc     PNT
+000375  1  F0 21                 beq     BACK
+000377  1  A5 84                 lda     $84
+000379  1  F0 1D                 beq     BACK
+00037B  1  30 0E                 bmi     LBEP
+00037D  1  A9 08                 lda     #$08
+00037F  1  85 8D                 sta     MEMY
+000381  1  85 8E                 sta     CNT
+000383  1  A9 20                 lda     #$20
+000385  1  20 BA 03              jsr     ENTN
+000388  1  4C 98 03              jmp     BACK
+00038B  1               
+00038B  1  A9 04        LBEP:    lda     #$04
+00038D  1  85 8D                 sta     MEMY
+00038F  1  A9 08                 lda     #$08
+000391  1  85 8E                 sta     CNT
+000393  1  A9 40                 lda     #$40
+000395  1  20 BA 03              jsr     ENTN
+000398  1  A5 84        BACK:    lda     $84
+00039A  1  18                    clc
+00039B  1  60                    rts
+00039C  1               
+00039C  1  AA           CLK:     tax
+00039D  1  EE 00 17              inc     $1700
+0003A0  1  CA           DLX:     dex
+0003A1  1  F0 07                 beq     COMP
+0003A3  1  EA                    nop
+0003A4  1  EA                    nop
+0003A5  1  EA                    nop
+0003A6  1  EA                    nop
+0003A7  1  EA                    nop
+0003A8  1  D0 F6                 bne     DLX
+0003AA  1               
+0003AA  1  88           COMP:    dey
+0003AB  1  F0 12                 beq     DUR
+0003AD  1  EA                    nop
+0003AE  1  EA                    nop
+0003AF  1  EA                    nop
+0003B0  1  EA                    nop
+0003B1  1  D0 00                 bne     ON
+0003B3  1               
+0003B3  1  D0 E7        ON:      bne     CLK
+0003B5  1               
+0003B5  1  A2           RDUR:    .byte   $a2
+0003B6  1  00                    .byte   $00
+0003B7  1  4C                    .byte   $4c
+0003B8  1  BC                    .byte   $bc
+0003B9  1  03                    .byte   $03
+0003BA  1               
+0003BA  1  A2 01        ENTN:    ldx     #$01
+0003BC  1  8E 01 17              stx     $1701
+0003BF  1  C6 8E        DUR:     dec     CNT
+0003C1  1  F0 04                 beq     DONE
+0003C3  1  A4 8D                 ldy     MEMY
+0003C5  1  D0 D5                 bne     CLK
+0003C7  1  60           DONE:    rts
+0003C8  1               
+0003C8  1               

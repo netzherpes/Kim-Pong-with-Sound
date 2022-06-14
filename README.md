@@ -1,6 +1,8 @@
 # Kim-Pong-with-Sound
 The Game PingPong from the first Book of KIM with sound <br>
-**not tested yet**<br>
+
+![Pong](https://github.com/netzherpes/Kim-Pong-with-Sound/raw/main/img/pong.jpg)
+
 A sound hack for the Game PingPong from the <br>
 "First Book of KIM"<br>
 

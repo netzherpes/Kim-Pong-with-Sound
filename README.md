@@ -9,6 +9,6 @@ A sound hack for the Game PingPong from the <br>
 Original: J.Butterfield<br>
 Hack:  George W Hawkins<br>
 
-Hook up your Speakers to PA0 as described in the 1st.B.O.K
+Hook up your Speakers to PA0 as described in the KIM-1 manual page 57
 
 I changed some Variable addesses in the 0page to not double use it. No Idea if this does any difference, but for having a propper Listening it is helpful.
